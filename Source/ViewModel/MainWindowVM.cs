@@ -21,7 +21,7 @@ public class MainWindowVM : BaseViewModel {
     private readonly JsonVersion versionOnline;
     private string _iconImage, _textOutput, _progressBarText, _appName, _button1Text, _button2Text;
     private int _progressBarValue;
-    private bool isUpdateAvailable, _isAutoUpdate;
+    private bool isUpdateAvailable, _isAutoUpdate, _isAutoStart;
 
     public MainWindowVM() {
         IconImage = "../../Resources/Images/icon.png";
@@ -42,13 +42,15 @@ public class MainWindowVM : BaseViewModel {
             ReferenceValues.JsonSettingsMaster = JsonSerializer.Deserialize<JsonSettings>(FileHelpers.LoadFileText("settings"));
         } catch (Exception) {
             ReferenceValues.JsonSettingsMaster = new JsonSettings {
-                isAutoUpdate = true
+                isAutoUpdate = true,
+                isAutoStart = false
             };
 
             FileHelpers.SaveFileText("settings", JsonSerializer.Serialize(ReferenceValues.JsonSettingsMaster));
         }
 
         IsAutoUpdate = ReferenceValues.JsonSettingsMaster.isAutoUpdate;
+        IsAutoStart = ReferenceValues.JsonSettingsMaster.isAutoStart;
 
         JsonVersion versionCurrent = new();
 
@@ -56,12 +58,13 @@ public class MainWindowVM : BaseViewModel {
         try {
             using WebClient client = new();
             client.Headers.Add("user-agent", "Anything");
-            byte[] bytes = client.DownloadData("https://raw.githubusercontent.com/TheOnlyRupert/" + ReferenceValues.APP_VERSION_NAME + "/main/version.json");
+            byte[] bytes = client.DownloadData("https://raw.githubusercontent.com/TheOnlyRupert/" + ReferenceValues.APP_VERSION_NAME + "/master/version.json");
+            Console.WriteLine(Encoding.UTF8.GetString(bytes));
             versionOnline = JsonSerializer.Deserialize<JsonVersion>(Encoding.UTF8.GetString(bytes));
         } catch (WebException) {
             //ignore
         } catch (Exception e) {
-            Console.WriteLine(e);
+            Console.WriteLine(e.ToString());
         }
 
         /* Then Get Local Version */
@@ -122,7 +125,7 @@ public class MainWindowVM : BaseViewModel {
             Button2Text = "Skip Update and Launch";
             isUpdateAvailable = true;
         } else {
-            TextOutput = "LEGS is currently up to date\nCurrent: v" + versionCurrent.versionMajor + "." + versionCurrent.versionMinor + "." + versionCurrent.versionPatch + "-" +
+            TextOutput = ReferenceValues.APP_NAME + " is currently up to date\nCurrent: v" + versionCurrent.versionMajor + "." + versionCurrent.versionMinor + "." + versionCurrent.versionPatch + "-" +
                          versionCurrent.versionBranch;
             Button1Text = "Exit";
             Button2Text = "Launch";
@@ -131,6 +134,15 @@ public class MainWindowVM : BaseViewModel {
 
         if (IsAutoUpdate && isUpdateAvailable) {
             DownloadFile();
+        }
+
+        if (IsAutoStart && !isUpdateAvailable) {
+            try {
+                Process.Start(ReferenceValues.AppDirectory + "/" + ReferenceValues.APP_NAME + "/" + ReferenceValues.APP_NAME);
+                Application.Current.Shutdown();
+            } catch (Exception) {
+                TextOutput = "Failed to Launch " + ReferenceValues.APP_NAME + ". Try re-downloading file.";
+            }
         }
     }
 
@@ -145,7 +157,7 @@ public class MainWindowVM : BaseViewModel {
                                          versionOnline.versionPatch + "-" + versionOnline.versionBranch + "/" + ReferenceValues.APP_NAME + ".v" + versionOnline.versionMajor + "." +
                                          versionOnline.versionMinor + "." +
                                          versionOnline.versionPatch + "-" + versionOnline.versionBranch + ".zip"),
-            "LEGS.v" + versionOnline.versionMajor + "." + versionOnline.versionMinor + "." + versionOnline.versionPatch + "-" + versionOnline.versionBranch + ".zip");
+            ReferenceValues.APP_NAME + ".v" + versionOnline.versionMajor + "." + versionOnline.versionMinor + "." + versionOnline.versionPatch + "-" + versionOnline.versionBranch + ".zip");
     }
 
     private void DownloadProgress(object sender, DownloadProgressChangedEventArgs e) {
@@ -168,7 +180,7 @@ public class MainWindowVM : BaseViewModel {
                 Process.Start(ReferenceValues.AppDirectory + "/" + ReferenceValues.APP_NAME + "/" + ReferenceValues.APP_NAME);
                 Application.Current.Shutdown();
             } catch (Exception) {
-                TextOutput = "Failed to Launch LEGS. Try re-downloading file.";
+                TextOutput = "Failed to Launch " + ReferenceValues.APP_NAME + ". Try re-downloading file.";
             }
 
             break;
@@ -202,17 +214,21 @@ public class MainWindowVM : BaseViewModel {
 
         Directory.Delete(tempPath, true);
 
-        TextOutput = "LEGS has been updated to the most recent version.";
+        TextOutput = ReferenceValues.APP_NAME + " has been updated to the most recent version.";
         Button1Text = "Exit";
         Button2Text = "Launch";
         isUpdateAvailable = false;
         ProgressBarText = "Done";
         ProgressBarValue = 0;
-    }
 
-    private void SaveSettings() {
-        ReferenceValues.JsonSettingsMaster.isAutoUpdate = IsAutoUpdate;
-        FileHelpers.SaveFileText("settings", JsonSerializer.Serialize(ReferenceValues.JsonSettingsMaster));
+        if (IsAutoStart) {
+            try {
+                Process.Start(ReferenceValues.AppDirectory + "/" + ReferenceValues.APP_NAME + "/" + ReferenceValues.APP_NAME);
+                Application.Current.Shutdown();
+            } catch (Exception) {
+                TextOutput = "Failed to Launch " + ReferenceValues.APP_NAME + ". Try re-downloading file.";
+            }
+        }
     }
 
     #region Fields
@@ -277,8 +293,19 @@ public class MainWindowVM : BaseViewModel {
         get => _isAutoUpdate;
         set {
             _isAutoUpdate = value;
-            SaveSettings();
+            ReferenceValues.JsonSettingsMaster.isAutoUpdate = IsAutoUpdate;
+            FileHelpers.SaveFileText("settings", JsonSerializer.Serialize(ReferenceValues.JsonSettingsMaster));
             RaisePropertyChangedEvent("IsAutoUpdate");
+        }
+    }
+
+    public bool IsAutoStart {
+        get => _isAutoStart;
+        set {
+            _isAutoStart = value;
+            ReferenceValues.JsonSettingsMaster.isAutoStart = IsAutoStart;
+            FileHelpers.SaveFileText("settings", JsonSerializer.Serialize(ReferenceValues.JsonSettingsMaster));
+            RaisePropertyChangedEvent("IsAutoStart");
         }
     }
 

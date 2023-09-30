@@ -22,6 +22,8 @@
 
         <CheckBox Grid.Column="0" Grid.Row="2" Content="Auto Update Enabled" IsChecked="{Binding IsAutoUpdate}" VerticalContentAlignment="Center" HorizontalAlignment="Center" FontSize="16"
                   Foreground="White"/>
+        <CheckBox Grid.Column="1" Grid.Row="2" Content="Auto Start Enabled" IsChecked="{Binding IsAutoStart}" VerticalContentAlignment="Center" HorizontalAlignment="Center" FontSize="16"
+                  Foreground="White"/>
 
         <Button Grid.Column="0" Grid.Row="3" Content="{Binding Button1Text}" FontSize="24" Command="{Binding ButtonCommand}" CommandParameter="button1"/>
         <Button Grid.Column="1" Grid.Row="3" Content="{Binding Button2Text}" FontSize="24" IsCancel="True" Command="{Binding ButtonCommand}" CommandParameter="button2"/>
